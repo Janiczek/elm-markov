@@ -3,6 +3,8 @@ elm-markov
 
 Markov chain library for Elm
 
+# DON'T USE UNTIL [THIS PR](https://github.com/imeckler/ratio/pull/1) IS MERGED
+
 ## What is this about?
 
 A [Markov chain](https://en.wikipedia.org/wiki/Markov_chain) can be described as a state machine going from a state to a state with some given probability.
