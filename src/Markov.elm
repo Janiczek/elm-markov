@@ -46,17 +46,8 @@ After generating a random number <0..1>, we find the first transition that has h
 
 Thus we have chosen the transition to state `C`.
 
-# Input types
-@docs Input
-
-# Transitions types
-@docs Transitions, EndStateCounter, TransitionCount
-
 # Transitions
 @docs transitions, addToTransitions
-
-# Probabilities types
-@docs Probabilities, Probability
 
 # Probabilities
 @docs probabilities
