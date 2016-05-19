@@ -1,107 +1,34 @@
 module Markov
     exposing
-        ( Input
-        , Transitions
-        , EndStateCounter
-        , TransitionCount
-        , Probabilities
-        , Probability
-        , transitions
-        , addToTransitions
+        ( StateMachine
+        , fromInput
+        , fromInputs
+        , addInput
         , probabilities
+        , firstState
+        , nextState
+        , walk
         )
 
-{-| We want to be able to randomly genererate a number <0..1> and assign a value to it.
+{-|
 
-If we have a transition table:
+# Building a Markov chain
+@docs StateMachine, fromInput, fromInputs, addInput
 
-    # TRANSITIONS
-    A -> B: 2x
-    A -> C: 10x
-    A -> D: 8x
-
-Then we can see that in the input data we've went from A to something 20 times in total.
-We can normalize the counts for given end states into values (percentages) which sum to 1.0:
-
-    # PROBABILITIES
-    A -> B: 0.1  (=  2/20)
-    A -> C: 0.5  (= 10/20)
-    A -> D: 0.4  (=  8/20)
-
-We "lay" these next to each other by summing them:
-
-    # INTERVALS
-    A -> B: 0.1
-    A -> C: 0.6  (= 0.1 + 0.5)
-    A -> D: 1.0  (= 0.1 + 0.5 + 0.4)
-
-And thus form intervals: which random number corresponds to which transition.
-
-After generating a random number <0..1>, we find the first transition that has higher percentage than that number.
-
-    randomNumber = 0.34
-
-    A -> B: too low (0.1 <= 0.34)
-    A -> C: enough! (0.6  > 0.34)
-
-Thus we have chosen the transition to state `C`.
-
-# Transitions
-@docs transitions, addToTransitions
-
-# Probabilities
+# Inspecting a Markov chain
 @docs probabilities
+
+# Generators
+@docs firstState, nextState, walk
 
 -}
 
 import Dict exposing (Dict)
-import Ratio exposing (Rational, over)
+import List.Extra as List
+import Random.Pcg as Random exposing (Generator)
 
 
-{-| Input list from which we generate the Markov chain.
-
-Generally we'll want a string which we'll split and transform, but that's too specific and just one of many possible usages. This is as general as can be.
--}
-type alias Input comparable =
-    List comparable
-
-
-{-| How many times did this transition happen?
--}
-type alias TransitionCount =
-    Int
-
-
-{-| Probability of the transition.
-
-       how many times did this transition happen
-    ----------------------------------------------
-    number of all transitions for this start state
--}
-type alias Probability =
-    Rational
-
-
-{-| Number representing the end of an interval.
-
-This could still be Rational, but given that we'll compare this to the random numbers a lot, let's save ourselves computing it over and over again.
--}
-type alias IntervalEnd =
-    Float
-
-
-{-| All the possible transitions of a state machine.
-
-These are kept in such form that it's easy to extend them after creation.
-
-From the example above:
-
-    A -> B: 2x
-    A -> C: 10x
-    A -> D: 8x
-    B -> A: 1x  -- thrown in for variety
-
-We represent this as (pseudocode):
+{-|
 
     { A: { B: 2
          , C: 10
@@ -115,33 +42,31 @@ type alias Transitions comparable =
     Dict comparable (EndStateCounter comparable)
 
 
-{-| How many times did we get to this state from some start state?
+{-|
+
+    { B: 2
+    , C: 10
+    , D: 8
+    }
+
 -}
 type alias EndStateCounter comparable =
-    Dict comparable TransitionCount
+    Dict comparable Int
 
 
-{-| Probabilities for a given starting state.
+{-|
 
-From the example above:
-
-    A -> B: 0.1  (=  2/20)
-    A -> C: 0.5  (= 10/20)
-    A -> D: 0.4  (=  8/20)
-
-We represent this as:
-
-    [ (Ratio  2 20, B) -- actually all of these get normalized but here we don't care
-    , (Ratio 10 20, C)
-    , (Ratio  8 20, D)
+    [ (0.1, B)
+    , (0.5, C)
+    , (0.4, D)
     ]
 
 -}
 type alias Probabilities comparable =
-    List ( Probability, comparable )
+    List ( Float, comparable )
 
 
-{-| Intervals for a given starting state.
+{-| Intervals to determine (given a random number <0..1>) an end state.
 
 From the example above:
 
@@ -164,34 +89,73 @@ We represent this as:
 
 -}
 type alias Intervals comparable =
-    List ( IntervalEnd, comparable )
+    List ( Float, comparable )
 
 
-{-| Parse the input sequence into a "transition matrix."
+{-| The `StateMachine` type holds all the needed info for the Markov chain to run.
 -}
-transitions : Input comparable -> Transitions comparable
-transitions input =
+type alias StateMachine comparable =
+    { inputs : List (List comparable)
+    , transitions : Transitions comparable
+    , intervals : comparable -> Intervals comparable
+    }
+
+
+{-| Create a Markov chain with the given inputs.
+-}
+fromInputs : List (List comparable) -> StateMachine comparable
+fromInputs inputs =
     let
-        restOfInput =
+        transitions' =
+            transitions inputs
+
+        intervals' =
+            intervals transitions'
+    in
+        { inputs = inputs
+        , transitions = transitions'
+        , intervals = intervals'
+        }
+
+
+{-| Create a Markov chain with the given input.
+-}
+fromInput : List comparable -> StateMachine comparable
+fromInput input =
+    fromInputs [ input ]
+
+
+{-| Train the Markov chain on some more input.
+-}
+addInput : List comparable -> StateMachine comparable -> StateMachine comparable
+addInput input { inputs } =
+    fromInputs (input :: inputs)
+
+
+transitions : List (List comparable) -> Transitions comparable
+transitions inputs =
+    let
+        restOfInput input =
             List.tail input
 
-        pairs =
-            case restOfInput of
+        pairs input =
+            case restOfInput input of
                 Nothing ->
                     []
 
                 Just rest ->
                     List.map2 (,) input rest
+
+        pairs' =
+            List.concatMap pairs inputs
     in
-        List.foldl addToTransitions Dict.empty pairs
+        List.foldl addToTransitions Dict.empty pairs'
 
 
-{-| Increment a counter for this (startState, endState) pair.
--}
 addToTransitions : ( comparable, comparable ) -> Transitions comparable -> Transitions comparable
 addToTransitions ( startState, endState ) transitions =
     let
-        incrementEndStateCounter : Maybe TransitionCount -> Maybe TransitionCount
+        incrementEndStateCounter : Maybe Int -> Maybe Int
         incrementEndStateCounter count =
             Just ((Maybe.withDefault 0 count) + 1)
 
@@ -212,17 +176,17 @@ addToTransitions ( startState, endState ) transitions =
 {-| Get probabilities for a given starting state.
 -}
 probabilities : Transitions comparable -> comparable -> Probabilities comparable
-probabilities stateMachine startState =
+probabilities transitions startState =
     let
         transitionsForThisState =
-            Dict.get startState stateMachine
+            Dict.get startState transitions
                 |> Maybe.withDefault Dict.empty
 
         totalTransitionCount =
             Dict.size transitionsForThisState
 
         calcProbability transitionCount =
-            transitionCount `over` totalTransitionCount
+            (toFloat transitionCount) / (toFloat totalTransitionCount)
 
         transitionToProbability ( endState, transitionCount ) =
             ( calcProbability transitionCount, endState )
@@ -231,19 +195,17 @@ probabilities stateMachine startState =
             |> List.map transitionToProbability
 
 
-{-| Get an interval (see the doc for the type Intervals) for every possibility.
--}
-intervals : Probabilities comparable -> Intervals comparable
-intervals probabilities =
+intervals : Transitions comparable -> comparable -> Intervals comparable
+intervals transitions startState =
     let
-        ( onlyProbabilities, onlyEndStates ) =
-            List.unzip probabilities
+        probabilities' =
+            probabilities transitions startState
 
-        floatProbabilities =
-            List.map Ratio.toFloat onlyProbabilities
+        ( onlyProbabilities, onlyEndStates ) =
+            List.unzip probabilities'
 
         summedProbabilitiesWithZero =
-            List.scanl (+) 0 floatProbabilities
+            List.scanl (+) 0 onlyProbabilities
 
         maybeSummedProbabilities =
             List.tail summedProbabilitiesWithZero
@@ -252,3 +214,62 @@ intervals probabilities =
             Maybe.withDefault [] maybeSummedProbabilities
     in
         List.map2 (,) summedProbabilities onlyEndStates
+
+
+{-| Generate a random first state.
+-}
+firstState : StateMachine comparable -> Generator (Maybe comparable)
+firstState stateMachine =
+    stateMachine.inputs
+        |> List.concat
+        |> Random.sample
+
+
+{-| Generate a random next state given the current state.
+-}
+nextState : StateMachine comparable -> comparable -> Generator (Maybe comparable)
+nextState stateMachine startState =
+    let
+        intervals' =
+            intervals stateMachine.transitions startState
+
+        randomNumberGenerator =
+            Random.float 0 1
+
+        getEndState randomNumber =
+            Maybe.map snd
+                <| List.head
+                <| List.dropWhile (\( interval, endState ) -> interval <= randomNumber) intervals'
+
+        endStateGenerator =
+            Random.map getEndState
+                randomNumberGenerator
+    in
+        endStateGenerator
+
+
+{-| Generate a random walk of max length given by the second parameter.
+-}
+walk : StateMachine comparable -> Int -> Generator (List comparable)
+walk stateMachine maxLength =
+    let
+        generateUpToN : Int -> Maybe comparable -> Generator (List comparable)
+        generateUpToN remaining last =
+            if remaining == 0 then
+                Random.constant []
+            else
+                case last of
+                    Nothing ->
+                        Random.constant []
+
+                    Just last' ->
+                        let
+                            next =
+                                (nextState stateMachine last')
+                                    `Random.andThen` (generateUpToN (remaining - 1))
+                        in
+                            next
+                                `Random.andThen` (\list -> Random.constant (last' :: list))
+    in
+        (firstState stateMachine)
+            `Random.andThen` (generateUpToN maxLength)

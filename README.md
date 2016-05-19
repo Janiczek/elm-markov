@@ -3,7 +3,10 @@ elm-markov
 
 Markov chain library for Elm
 
-# DON'T USE UNTIL [THIS PR](https://github.com/imeckler/ratio/pull/1) IS MERGED
+## TODO
+
+- various utilities for parsing `String`s into an input list
+- transitions of order > 1 (Markov chain of order `n` depends on past `n` states)
 
 ## What is this about?
 
@@ -55,21 +58,3 @@ It will allow you to:
 
 * parse text from a string into the state machine (customizable)
 * generate a text given the state
-
-### Parsing text
-
-```elm
--- TODO example
-```
-
-### Parsing text with options
-
-```elm
--- TODO example
-```
-
-### Generating text
-
-```elm
--- TODO example
-```
