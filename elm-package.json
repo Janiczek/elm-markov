@@ -1,17 +1,16 @@
 {
-    "version": "2.0.1",
-    "summary": "Markov chain library for Elm",
+    "version": "1.0.0",
+    "summary": "Live demo for the Markov chain library for Elm",
     "repository": "https://github.com/janiczek/elm-markov.git",
     "license": "MIT",
     "source-directories": [
-        "src"
+        "."
     ],
-    "exposed-modules": [
-        "Markov"
-    ],
+    "exposed-modules": [],
     "dependencies": {
-        "elm-community/elm-list-extra": "1.0.0 <= v < 2.0.0",
         "elm-lang/core": "4.0.0 <= v < 5.0.0",
+        "elm-lang/html": "1.0.0 <= v < 2.0.0",
+        "janiczek/elm-markov": "2.0.3 <= v < 3.0.0",
         "mgold/elm-random-pcg": "2.0.0 <= v < 3.0.0"
     },
     "elm-version": "0.17.0 <= v < 0.18.0"

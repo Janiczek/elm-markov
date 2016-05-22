@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>elm-markov</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/css/bootstrap.min.css" />
+    <script src="elm-markov.js"></script>
+  </head>
+  <body>
+    <script>
+      var seed1 = Math.floor(Math.random()*0xFFFFFFFF) & 0xFFFFFFFF;
+      var seed2 = Math.floor(Math.random()*0xFFFFFFFF) & 0xFFFFFFFF;
+      Elm.Main.fullscreen({
+        seed1: seed1,
+        seed2: seed2
+      });
+    </script>
+  </body>
+</html>
