@@ -54,7 +54,7 @@ type Msg
 
 update : Msg -> Model -> Model
 update msg model =
-    case Debug.log "msg" msg of
+    case msg of
         GenerateString ->
             let
                 stateMachine =
@@ -89,7 +89,7 @@ update msg model =
             }
 
         UpdateInput index contents ->
-            { model | inputs = (Debug.log "X" <| Dict.insert index contents model.inputs) }
+            { model | inputs = Dict.insert index contents model.inputs }
 
 
 sanitizeInput : String -> List String
