@@ -1,12 +1,7 @@
 elm-markov
 ==========
 
-Markov chain library for Elm
-
-## TODO
-
-- various utilities for parsing `String`s into an input list
-- transitions of order > 1 (Markov chain of order `n` depends on past `n` states)
+Markov chain library for Elm (see [demo](http://janiczek.github.io/elm-markov/))
 
 ## What is this about?
 
@@ -58,3 +53,8 @@ It will allow you to:
 
 * parse text from a string into the state machine (customizable)
 * generate a text given the state
+
+## TODO
+
+- various utilities for parsing `String`s into an input list
+- transitions of order > 1 (Markov chain of order `n` depends on past `n` states)
